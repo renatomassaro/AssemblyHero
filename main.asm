@@ -6,7 +6,7 @@ TAB_SIZE = 20
 GUITAR_SIZE = 10
 TOTAL_CHORDS = 5
 
-Chords BYTE 1, 2, 3, 3, 2, 1
+Chords BYTE 5, 4, 3, 2, 1, 0 , 1, 2, 3
 Drawn WORD 0
 ChordsSize BYTE SIZEOF Chords
 
@@ -14,14 +14,28 @@ ChordsSize BYTE SIZEOF Chords
 
 AssemblyHero PROC
 
-	MOV ecx, 0
+	MOV ECX, 0
 	MOV ESI, 0 ;We will start with the first Chord at Chords
 	
-	;CALL DumpRegs
 	CALL DrawBase
+	CALL Paradinha
 	CALL CallNext
-	;CALL CallNext
-	;CALL CallNext
+	CALL Paradinha
+	CALL CallNext
+	CALL Paradinha
+	CALL CallNext
+	CALL Paradinha
+	CALL CallNext
+	CALL Paradinha
+	CALL CallNext
+	CALL Paradinha
+	CALL CallNext
+	CALL Paradinha
+	CALL CallNext
+	CALL Paradinha
+	CALL CallNext
+	CALL Paradinha
+	CALL CallNext
 
 	
 
@@ -30,6 +44,27 @@ AssemblyHero PROC
 	exit	
 
 AssemblyHero ENDP
+
+Paradinha PROC
+
+	PUSH ESI
+	PUSH EBP
+
+	mov bp, 13690
+	mov si, 13690
+	delay2:
+	dec bp
+	nop
+	jnz delay2
+	dec si
+	cmp si,0    
+	jnz delay2
+
+	POP EBP
+	POP ESI
+
+Paradinha ENDP
+
 
 QuitGame PROC
 
@@ -44,10 +79,10 @@ QuitGame ENDP
 
 CallNext PROC
 
-	CALL DrawChords_Down
+	
 
 	CALL DrawNext
-
+	CALL DrawChords_Down
 	INC ESI
 
 	;Call DumpRegs
@@ -64,7 +99,7 @@ WriteXY PROC USES EDX EAX
 	CALL gotoXY
 	CALL WriteChar
 
-	ret
+	RET
 
 WriteXY ENDP
 
@@ -88,9 +123,8 @@ DrawBase PROC
 		PUSH ECX
 		PUSH EAX
 
-		;MOV ECX, TOTAL_CHORDS
-		;INC ECX
-		MOV ECX, 6
+		MOV ECX, TOTAL_CHORDS
+		INC ECX
 
 
 		L2:
@@ -117,16 +151,92 @@ DrawBase PROC
 
 DrawBase ENDP
 
-DrawChords_Down PROC
+DrawChords_Down PROC USES EAX EBX EDX ESI
 
+	MOV ECX, GUITAR_SIZE
+	MOV ECX, EDX
+	MOV EBX, 0
+	MOV ESI, 0
+
+	MOV AX, Drawn
+	CMP AX, GUITAR_SIZE
+
+
+	JG NoIntactLines
+
+		;If we are here then Drawn Lines < Guitar_Size. (We have intact lines)
+		;By intact lines I mean default lines from DrawBase
+		;That means different loop and ID information
+		; Loop = Drawn - 1
+		; Id = Dr - LINE
+
+		MOV ESI, 0
+		MOVZX ECX, Drawn		
+		DEC ECX
+		MOV EDX, ECX
+		CMP ECX, 0
+		JZ GTFO
+
+	NoIntactLines:
+
+	
+	MOV EAX, ECX
+	MOV EDX, 0
+	MOV DL, 0
+
+	L0:
+
+		INC DL
+		PUSH EDX
+		
+
+	LOOP L0
+
+	MOV ECX, EAX
+	MOV EAX, DWORD PTR Drawn
+
+	L1:
+
+		MOV AL, Chords[ESI]
+
+		;MOV EDX, EBX
+
+		POP EDX
+
+
+		;Call WriteDec
+
+		;CALL DumpRegs
+
+		MOV BH, DL
+
+		CMP EAX, 0
+		JNE Colored
+			CALL DrawChord_None
+		JMP Back
+		Colored:
+			CALL DrawChord_Color
+		Back:
+
+
+		INC ESI
+		INC EBX
+
+	LOOP L1
+
+	;call DumpRegs
+
+	GTFO:
+
+	RET
 
 
 DrawChords_Down ENDP
 
-DrawChord_None PROC
+DrawChord_None PROC	USES EAX EDX
 
 	MOV EDX, TAB_SIZE
-	MOV DH, 0
+	MOV DH, BH
 
 	MOV ECX, TOTAL_CHORDS
 
@@ -143,10 +253,12 @@ DrawChord_None PROC
 
 DrawChord_None ENDP
 
-DrawChord_Color PROC USES EAX
+DrawChord_Color PROC USES EAX EBX ECX EDX
 
+	;Call DumpRegs
+	    
 	MOV EDX, TAB_SIZE
-	MOV DH, 0
+	MOV DH, BH
 	MOV BL, 0
 
 	MOV ECX, TOTAL_CHORDS
@@ -173,9 +285,12 @@ DrawChord_Color PROC USES EAX
 
 DrawChord_Color ENDP
 
-DrawNext PROC
+DrawNext PROC USES EAX EBX
 
 	INC Drawn
+
+	; Level = 0, Drawn on Line 0	
+	MOV BH, 0 
 
 	MOV AL, Chords[ESI]
 
@@ -187,23 +302,6 @@ DrawNext PROC
 	G:
 	CALL DrawChord_Color
 	RET
-
-	;Call DumpRegs
-
-
-
-
-
-	;CMP Drawn, GUITAR_SIZE
-	
-	;JGE Before
-	; If we are here then Drawn < GUITAR_SIZE
-	; So we will have to edi
-		
-
-	;Before:
-	; This label is reached if the number of Drawn lines is >= GUITAR_SIZE
-	; This means that we will edit only the first house of chords
 
 
 DrawNext ENDP
