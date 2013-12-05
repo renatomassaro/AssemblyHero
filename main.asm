@@ -6,7 +6,7 @@ TAB_SIZE = 20
 GUITAR_SIZE = 10
 TOTAL_CHORDS = 5
 
-Chords BYTE 5, 4, 3, 2, 1, 0 , 1, 2, 3
+Chords BYTE 5, 4, 3, 2, 1, 0 , 1, 2, 3, 4, 5, 4, 3, 2, 1, 0, 2
 Drawn WORD 0
 ChordsSize BYTE SIZEOF Chords
 
@@ -14,29 +14,22 @@ ChordsSize BYTE SIZEOF Chords
 
 AssemblyHero PROC
 
-	MOV ECX, 0
 	MOV ESI, 0 ;We will start with the first Chord at Chords
 	
 	CALL DrawBase
-	CALL Paradinha
-	CALL CallNext
-	CALL Paradinha
-	CALL CallNext
-	CALL Paradinha
-	CALL CallNext
-	CALL Paradinha
-	CALL CallNext
-	CALL Paradinha
-	CALL CallNext
-	CALL Paradinha
-	CALL CallNext
-	CALL Paradinha
-	CALL CallNext
-	CALL Paradinha
-	CALL CallNext
-	CALL Paradinha
+
+	MOVZX ECX, ChordsSize
+
+	L1:
+
+	PUSH ECX
+	MOV ECX, 0
+
 	CALL CallNext
 
+	POP ECX
+
+	LOOP L1
 	
 
 	Call QuitGame
@@ -47,21 +40,7 @@ AssemblyHero ENDP
 
 Paradinha PROC
 
-	PUSH ESI
-	PUSH EBP
-
-	mov bp, 13690
-	mov si, 13690
-	delay2:
-	dec bp
-	nop
-	jnz delay2
-	dec si
-	cmp si,0    
-	jnz delay2
-
-	POP EBP
-	POP ESI
+	CALL DELAY
 
 Paradinha ENDP
 
@@ -85,7 +64,8 @@ CallNext PROC
 	CALL DrawChords_Down
 	INC ESI
 
-	;Call DumpRegs
+	MOV EAX, 500
+	CALL Paradinha
 
 	RET
 
@@ -93,9 +73,6 @@ CallNext ENDP
 
 WriteXY PROC USES EDX EAX
 
-	;MOV dh, 0			;Parâmetros para gotXY
-	;MOV dl, TAB_SIZE			;Parâmetros para gotXY
-	;MOV al, 30							;Caracter em branco
 	CALL gotoXY
 	CALL WriteChar
 
@@ -110,8 +87,7 @@ DrawBase PROC
 	MOV ECX, GUITAR_SIZE
 	MOV DH, 0
 	
-	MOV AL, 63
-	;ADD AH, 20
+	MOV AL, 124
 
 	L1:
 
@@ -131,7 +107,7 @@ DrawBase PROC
 
 			ADD BH, 5
 			MOV DL, BH
-			MOV AL, 45
+			MOV AL, 00
 
 			CALL WriteXY
 
@@ -162,7 +138,7 @@ DrawChords_Down PROC USES EAX EBX EDX ESI
 	CMP AX, GUITAR_SIZE
 
 
-	JG NoIntactLines
+	;JG NoIntactLines
 
 		;If we are here then Drawn Lines < Guitar_Size. (We have intact lines)
 		;By intact lines I mean default lines from DrawBase
@@ -243,7 +219,7 @@ DrawChord_None PROC	USES EAX EDX
 	L1:
 
 		ADD	DL, 5
-		MOV AL, 45
+		MOV AL, 00
 
 		CALL WriteXY
 
@@ -267,8 +243,36 @@ DrawChord_Color PROC USES EAX EBX ECX EDX
 		INC BL
 		CMP BL, AL
 		PUSH EAX
-		MOV AL, 45
+		MOV AL, 00
 		JNE Empty
+
+		CMP BL, 1
+		JE G
+		CMP BL, 2
+		JE R
+		CMP BL, 3
+		JE Y
+		CMP BL, 4
+		JE B
+		JMP O
+		G:
+		MOV AX, GREEN
+		JMP SetColor
+		R:
+		MOV AX, RED
+		JMP SetColor
+		Y:
+		MOV AX, YELLOW
+		JMP SetColor
+		B:
+		MOV AX, BLUE
+		JMP SetColor
+		O:
+		MOV AX, LIGHTRED
+		JMP SetColor
+
+		SetColor:
+		CALL setTextColor
 
 		MOV AL, 48
 	Empty: 
@@ -276,6 +280,9 @@ DrawChord_Color PROC USES EAX EBX ECX EDX
 		ADD	DL, 5
 
 		CALL WriteXY
+
+		MOV AX, 0Fh
+		CALL setTextColor
 
 		POP EAX
 
