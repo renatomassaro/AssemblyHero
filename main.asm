@@ -3,18 +3,39 @@ INCLUDE Irvine32.inc
 .data
 
 TAB_SIZE = 20
+TAB_SCORE = 5
+TAB_REPORT = 10
+
+REPORT_LINE = 5
 GUITAR_SIZE = 10
 TOTAL_CHORDS = 5
 
 KEY_ERROR = 58h
 KEY_SUCCESS = 0DCh
 
-Chords BYTE 5, 4, 3, 2, 1, 0 , 1, 2, 3, 4, 5, 4, 3, 2, 1, 0, 2, 0, 0, 0, 0, 0, 0
+SCORE_SUCCESS_BASE = 500
+
+SIDEBAR_TOTAL = 3
+SIDEBAR_SCORE = 0
+SIDEBAR_HITS = 1
+SIDEBAR_STREAK = 2
+
+Chords BYTE 1, 2, 1, 2, 1, 1, 1, 2, 2, 2, 1, 2, 1, 1, 2, 2, 0,0,0,0,0,0,0,0,0,0
+;Chords BYTE 5, 4, 3, 2, 1, 0 , 1, 2, 3, 4, 5, 4, 3, 2, 1, 0, 2, 0, 0, 0, 0, 0, 0
 ;Chords BYTE 5, 0, 4, 0, 3, 0, 2, 0, 1, 0, 0, 0, 1, 0, 2, 0, 3, 0
 Drawn WORD 0
 ChordsSize BYTE SIZEOF Chords
 InputPressed BYTE 0
 InputChanged BYTE 0
+ReportShown BYTE 0
+score DWORD	0
+hits DWORD 0
+streak DWORD 0
+STRING_Score db "Score: ", 0
+STRING_Hits db "Hits: ", 0
+STRING_Streak db "Streak: ", 0
+STRING_Miss db "Miss!", 0
+STRING_Hit db "HIT!", 0
 
 .code
 
@@ -77,14 +98,16 @@ CallNext PROC USES ECX EAX
 
 	MOV ECX, 0
 
+	
 	CALL DrawNext
 	CALL DrawChords_Down
+	CALL UpdateSideBar
 
 	MOV EAX, 700
 	CALL Paradinha
 
 	CALL DrawInput_Next
-
+	
 
 
 	CMP InputPressed, 1
@@ -92,6 +115,12 @@ CallNext PROC USES ECX EAX
 
 	MOV InputPressed, 0
 	CALL DrawInput
+
+	CMP ReportShown, 1
+	JNE Continue
+
+	MOV ReportShown, 0
+	CALL ClearReport
 
 	Continue:
 
@@ -151,9 +180,173 @@ DrawBase PROC
 
 	LOOP L1
 
+	CALL DrawSideBar
+
 	RET
 
 DrawBase ENDP
+
+DrawSideBar PROC
+
+	MOV EBX, 0
+	MOV DH, 0
+	ADD DL, TAB_SCORE
+
+	MOV ECX, SIDEBAR_TOTAL
+
+	L1:
+
+	CALL gotoXY
+	PUSH EDX
+
+	CMP EBX, SIDEBAR_SCORE
+	JNE H
+	MOV EDX, OFFSET STRING_Score
+	JMP Write
+	H:
+	CMP EBX, SIDEBAR_HITS
+	JNE S
+	MOV EDX, OFFSET STRING_Hits
+	JMP Write
+	S:
+	MOV EDX, OFFSET STRING_Streak
+
+	Write:
+	CALL WriteString
+
+	POP EDX
+
+	INC DH
+	INC EBX
+
+	LOOP L1
+
+	RET
+
+DrawSideBar ENDP
+
+UpdateScore PROC USES EAX EDX
+
+	INC hits
+	MOV EAX, SCORE_SUCCESS_BASE
+	CMP EAX, 0
+	
+	JE Update
+
+	MOV EDX, streak
+	MUL EDX
+
+	Update:
+
+	ADD score, EAX
+	INC streak
+
+	RET
+
+UpdateScore ENDP
+
+ReportXY PROC
+
+	MOV DH, REPORT_LINE
+	MOV DL, TAB_REPORT
+	CALL gotoXY
+
+	RET
+
+ReportXY ENDP
+
+ClearReport PROC USES ECX EAX
+
+	CALL ReportXY
+
+	MOV ECX, 5
+
+	L1:
+
+		MOV AL, 00
+		CALL WriteXY
+		INC DL
+
+	LOOP L1 
+
+	RET
+
+ClearReport ENDP
+
+WriteMiss PROC USES EAX EDX
+
+	CALL ReportXY
+
+	MOV AX, RED
+	CALL setTextColor
+
+	MOV EDX, OFFSET STRING_Miss
+	CALL WriteString
+
+	MOV ReportShown, 1
+
+
+	RET
+
+WriteMiss ENDP
+
+WriteHit PROC USES EAX EDX
+
+	CALL ReportXY
+
+	MOV AX, GREEN
+	CALL setTextColor
+
+	MOV EDX, OFFSET STRING_Hit
+	CALL WriteString
+
+	MOV ReportShown, 1
+
+	RET
+
+WriteHit ENDP
+
+UpdateSideBar PROC USES ECX EBX EAX	EDX
+
+	MOV EBX, 0
+	MOV DH, 0
+	MOV DL, GUITAR_SIZE
+	ADD DL, 35
+	ADD DL, TAB_SCORE
+	ADD DL, 15
+
+	MOV ECX, SIDEBAR_TOTAL
+
+	L1:
+
+	CALL gotoXY
+	PUSH EDX
+
+	CMP EBX, SIDEBAR_SCORE
+	JNE H
+	MOV EAX, score
+	JMP Write
+	H:
+	CMP EBX, SIDEBAR_HITS
+	JNE S
+	MOV EAX, hits
+	JMP Write
+	S:
+	MOV EAX, streak
+
+	Write:
+	CALL WriteDec
+
+	POP EDX
+
+	INC DH
+	INC EBX
+
+	LOOP L1
+
+	RET
+
+UpdateSideBar ENDP
 
 DrawChords_Down PROC USES EAX EBX EDX ESI
 
@@ -402,65 +595,69 @@ DrawInput_Chord PROC USES ESI
 	JMP G
 
 	A:
-		MOV AX, GREEN
-		MOV CL, 1
+		MOV CX, GREEN
+		MOV BL, 1
 		ADD DL, 5
 	JMP Continue
 	S:
-		MOV AX, RED
-		MOV CL, 2
+		MOV CX, RED
+		MOV BL, 2
 		ADD DL, 10
 	JMP Continue
 	D:
-		MOV AX, YELLOW
-		MOV CL, 3
+		MOV CX, YELLOW
+		MOV BL, 3
 		ADD DL, 15
 	JMP Continue
 	F:
-		MOV AX, BLUE
-		MOV CL, 4
+		MOV CX, BLUE
+		MOV BL, 4
 		ADD DL, 20
 	JMP Continue
 	G:
-		MOV AX, LIGHTRED
-		MOV CL, 5
+		MOV CX, LIGHTRED
+		MOV BL, 5
 		ADD DL, 25
 		
 	Continue:
 
-	CALL setTextColor
-
 	PUSH EAX
 	MOVZX EAX, Drawn
+
 	CMP AX, GUITAR_SIZE
 	POP EAX
 	JG NoIntactLines
 
-	MOV AL, KEY_ERROR
-
-	JMP Write
+	JMP Error
 	NoIntactLines:
 
 	MOVZX ESI, Drawn
 	SUB ESI, GUITAR_SIZE
- 
-	; BL = Inserted Value
-	; AL = Correct value
 
 	MOV AL, Chords[ESI]
 
-	CMP AL, CL
+	CMP AL, BL
 	JNE Error
 
+	CALL UpdateScore
+	CALL WriteHit
+	
 	MOV AL, KEY_SUCCESS
 	JMP Write
 	Error:
 	MOV AL, KEY_ERROR
-
+	MOV streak, 0
+	CALL ClearStreak
+	CALL WriteMiss
 
 	Write:
 
-	;MOV AL, 220
+	PUSH EAX
+	MOV EAX, ECX
+	CALL setTextColor
+	MOV ECX, 0
+	POP EAX
+
 	CALL WriteXY
 
 	POP EAX
@@ -471,6 +668,30 @@ DrawInput_Chord PROC USES ESI
 	RET
 
 DrawInput_Chord ENDP
+
+ClearStreak PROC USES ECX EDX EAX
+
+	MOV DH, 2
+	MOV DL, GUITAR_SIZE
+	ADD DL, 35
+	ADD DL, TAB_SCORE
+	ADD DL, 15	
+
+	MOV ECX, 4
+
+	L1:
+
+
+		INC DL
+		MOV AL, 00
+		CALL WriteXY
+		
+
+	LOOP L1
+	
+	RET
+
+ClearStreak ENDP
 
 DrawInput_Next PROC USES ESI
 
