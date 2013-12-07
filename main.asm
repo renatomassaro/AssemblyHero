@@ -7,8 +7,10 @@ GUITAR_SIZE = 10
 TOTAL_CHORDS = 5
 
 Chords BYTE 5, 4, 3, 2, 1, 0 , 1, 2, 3, 4, 5, 4, 3, 2, 1, 0, 2
+;Chords BYTE 5, 0, 4, 0, 3, 0, 2, 0, 1, 0, 0, 0, 1, 0, 2, 0, 3, 0
 Drawn WORD 0
 ChordsSize BYTE SIZEOF Chords
+InputPressed BYTE 0
 InputChanged BYTE 0
 
 .code
@@ -33,7 +35,7 @@ AssemblyHero PROC
 
 	QuitLoop:
 
-	Call QuitGame
+	CALL QuitGame
 
 	exit	
 
@@ -51,6 +53,8 @@ StartGame ENDP
 Paradinha PROC
 
 	CALL DELAY
+
+	RET
 
 Paradinha ENDP
 
@@ -72,15 +76,18 @@ CallNext PROC USES ECX EAX
 
 	CALL DrawNext
 	CALL DrawChords_Down
-	INC ESI
 
-	MOV EAX, 500
+	MOV EAX, 700
 	CALL Paradinha
 
-	CMP InputChanged, 1
+	CALL DrawInput_Next
+
+
+
+	CMP InputPressed, 1
 	JNE Continue
 
-	MOV InputChanged, 0
+	MOV InputPressed, 0
 	CALL DrawInput
 
 	Continue:
@@ -317,6 +324,7 @@ DrawNext PROC USES EAX EBX
 	MOV BH, 0 
 
 	MOV AL, Chords[ESI]
+	INC ESI
 
 	CMP AL, 0
 	JNE G
@@ -370,100 +378,170 @@ DrawInput ENDP
 DrawInput_Chord PROC
 
 	MOV DH, GUITAR_SIZE
-	MOV DL, TAB_SIZE
 	MOV BH, TAB_SIZE
 
 	MOV ECX, TOTAL_CHORDS
 
-	L2:
+	MOV DL, TAB_SIZE
 
-		MOV DL, TAB_SIZE
+	PUSH EAX
 
-		PUSH EAX
+	CMP AL, 61H
+	JE A
 
-		CMP AL, 61H
-		JE A
+	CMP AL, 73H
+	JE S
 
-		CMP AL, 73H
-		JE S
+	CMP AL, 64H
+	JE D
 
-		CMP AL, 64H
-		JE D
+	CMP AL, 66H
+	JE F
 
-		CMP AL, 66H
-		JE F
+	JMP G
 
-		JMP G
-
-		A:
-			MOV AX, GREEN
-			ADD DL, 5
-		JMP Continue
-		S:
-			MOV AX, RED
-			ADD DL, 10
-		JMP Continue
-		D:
-			MOV AX, YELLOW
-			ADD DL, 15
-		JMP Continue
-		F:
-			MOV AX, BLUE
-			ADD DL, 20
-		JMP Continue
-		G:
-			MOV AX, LIGHTRED
-			ADD DL, 25
+	A:
+		MOV AX, GREEN
+		ADD DL, 5
+	JMP Continue
+	S:
+		MOV AX, RED
+		ADD DL, 10
+	JMP Continue
+	D:
+		MOV AX, YELLOW
+		ADD DL, 15
+	JMP Continue
+	F:
+		MOV AX, BLUE
+		ADD DL, 20
+	JMP Continue
+	G:
+		MOV AX, LIGHTRED
+		ADD DL, 25
 		
-		Continue:
+	Continue:
 
-		CALL setTextColor
-		MOV AL, 220
+	CALL setTextColor
+	MOV AL, 220
+	CALL WriteXY
 
-		CALL WriteXY
-
-		POP EAX
-
-	LOOP L2
+	POP EAX
 
 	MOV AX, 0Fh
 	CALL setTextColor
 
+	RET
+
 DrawInput_Chord ENDP
+
+DrawInput_Next PROC USES ESI
+
+	MOV EAX, GUITAR_SIZE
+	CMP AX, Drawn
+
+	JG Continue
+
+	CMP InputChanged, 1
+	JNE DoDraw
+
+	CALL DrawInput
+
+	DoDraw:
+
+	MOV DH, GUITAR_SIZE
+	MOV DL, TAB_SIZE
+	MOV BH, TAB_SIZE
+
+	MOVZX ESI, Drawn
+	SUB ESI, GUITAR_SIZE
+
+	MOV AL, Chords[ESI]
+
+	CMP AL, 0
+	JE Continue
+
+	CMP AL, 1
+	JE G
+	CMP AL, 2
+	JE R
+	CMP AL, 3
+	JE Y
+	CMP AL, 4
+	JE B
+	JMP O
+	G:
+	MOV AX, GREEN
+	ADD DL, 5
+	JMP SetColor
+	R:
+	MOV AX, RED
+	ADD DL, 10
+	JMP SetColor
+	Y:
+	MOV AX, YELLOW
+	ADD DL, 15
+	JMP SetColor
+	B:
+	MOV AX, BLUE
+	ADD DL, 20
+	JMP SetColor
+	O:
+	MOV AX, LIGHTRED
+	ADD DL, 25
+	JMP SetColor
+
+	SetColor:
+	CALL setTextColor
+
+	MOV AL, 016h
+
+	CALL WriteXY
+
+	MOV AX, 0Fh
+	CALL setTextColor
+
+	MOV InputChanged, 1
+
+	Continue:
+
+	RET
+
+DrawInput_Next ENDP
 
 GetInput PROC
 
-;MOV EBX, 0
+	;MOV EBX, 0
 
-CALL ReadKey
+	CALL ReadKey
 
-;Pressed A
-CMP AL, 61H
-JE ChordPressed
+	;Pressed A
+	CMP AL, 61H
+	JE ChordPressed
 
-;Pressed S
-CMP AL, 73H
-JE ChordPressed
+	;Pressed S
+	CMP AL, 73H
+	JE ChordPressed
 
-;Pressed D
-CMP AL, 64H
-JE ChordPressed
+	;Pressed D
+	CMP AL, 64H
+	JE ChordPressed
 
-;Pressed F
-CMP AL, 66H
-JE ChordPressed
+	;Pressed F
+	CMP AL, 66H
+	JE ChordPressed
 
-;Pressed G
-CMP AL, 67H
-JE ChordPressed
+	;Pressed G
+	CMP AL, 67H
+	JE ChordPressed
 
-RET
+	RET
 
-ChordPressed:
-MOV InputChanged, 1
-CALL DrawInput_Chord
+	ChordPressed:
+	MOV InputPressed, 1
+	CALL DrawInput_Chord
 
-ret
+	RET
 
 GetInput ENDP
 
