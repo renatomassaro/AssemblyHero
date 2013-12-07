@@ -6,7 +6,10 @@ TAB_SIZE = 20
 GUITAR_SIZE = 10
 TOTAL_CHORDS = 5
 
-Chords BYTE 5, 4, 3, 2, 1, 0 , 1, 2, 3, 4, 5, 4, 3, 2, 1, 0, 2
+KEY_ERROR = 58h
+KEY_SUCCESS = 0DCh
+
+Chords BYTE 5, 4, 3, 2, 1, 0 , 1, 2, 3, 4, 5, 4, 3, 2, 1, 0, 2, 0, 0, 0, 0, 0, 0
 ;Chords BYTE 5, 0, 4, 0, 3, 0, 2, 0, 1, 0, 0, 0, 1, 0, 2, 0, 3, 0
 Drawn WORD 0
 ChordsSize BYTE SIZEOF Chords
@@ -375,12 +378,10 @@ DrawInput PROC
 
 DrawInput ENDP
 
-DrawInput_Chord PROC
+DrawInput_Chord PROC USES ESI
 
 	MOV DH, GUITAR_SIZE
 	MOV BH, TAB_SIZE
-
-	MOV ECX, TOTAL_CHORDS
 
 	MOV DL, TAB_SIZE
 
@@ -402,28 +403,64 @@ DrawInput_Chord PROC
 
 	A:
 		MOV AX, GREEN
+		MOV CL, 1
 		ADD DL, 5
 	JMP Continue
 	S:
 		MOV AX, RED
+		MOV CL, 2
 		ADD DL, 10
 	JMP Continue
 	D:
 		MOV AX, YELLOW
+		MOV CL, 3
 		ADD DL, 15
 	JMP Continue
 	F:
 		MOV AX, BLUE
+		MOV CL, 4
 		ADD DL, 20
 	JMP Continue
 	G:
 		MOV AX, LIGHTRED
+		MOV CL, 5
 		ADD DL, 25
 		
 	Continue:
 
 	CALL setTextColor
-	MOV AL, 220
+
+	PUSH EAX
+	MOVZX EAX, Drawn
+	CMP AX, GUITAR_SIZE
+	POP EAX
+	JG NoIntactLines
+
+	MOV AL, KEY_ERROR
+
+	JMP Write
+	NoIntactLines:
+
+	MOVZX ESI, Drawn
+	SUB ESI, GUITAR_SIZE
+ 
+	; BL = Inserted Value
+	; AL = Correct value
+
+	MOV AL, Chords[ESI]
+
+	CMP AL, CL
+	JNE Error
+
+	MOV AL, KEY_SUCCESS
+	JMP Write
+	Error:
+	MOV AL, KEY_ERROR
+
+
+	Write:
+
+	;MOV AL, 220
 	CALL WriteXY
 
 	POP EAX
