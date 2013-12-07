@@ -9,6 +9,7 @@ TOTAL_CHORDS = 5
 Chords BYTE 5, 4, 3, 2, 1, 0 , 1, 2, 3, 4, 5, 4, 3, 2, 1, 0, 2
 Drawn WORD 0
 ChordsSize BYTE SIZEOF Chords
+InputChanged BYTE 0
 
 .code
 
@@ -16,27 +17,36 @@ AssemblyHero PROC
 
 	MOV ESI, 0 ;We will start with the first Chord at Chords
 	
-	CALL DrawBase
 
-	MOVZX ECX, ChordsSize
+	CALL StartGame
 
-	L1:
+	GameLoop:
 
-	PUSH ECX
-	MOV ECX, 0
+		MOVZX EAX, ChordsSize
+		CMP AX, Drawn
+		JE QuitLoop
 
-	CALL CallNext
+		CALL CallNext
+		CALL GetInput
 
-	POP ECX
+	JMP GameLoop
 
-	LOOP L1
-	
+	QuitLoop:
 
 	Call QuitGame
 
 	exit	
 
 AssemblyHero ENDP
+
+StartGame PROC
+
+CALL DrawBase
+CALL DrawInput
+
+RET
+
+StartGame ENDP
 
 Paradinha PROC
 
@@ -56,9 +66,9 @@ QuitGame PROC
 
 QuitGame ENDP
 
-CallNext PROC
+CallNext PROC USES ECX EAX
 
-	
+	MOV ECX, 0
 
 	CALL DrawNext
 	CALL DrawChords_Down
@@ -66,6 +76,14 @@ CallNext PROC
 
 	MOV EAX, 500
 	CALL Paradinha
+
+	CMP InputChanged, 1
+	JNE Continue
+
+	MOV InputChanged, 0
+	CALL DrawInput
+
+	Continue:
 
 	RET
 
@@ -87,7 +105,7 @@ DrawBase PROC
 	MOV ECX, GUITAR_SIZE
 	MOV DH, 0
 	
-	MOV AL, 124
+	MOV AL, 219
 
 	L1:
 
@@ -273,7 +291,7 @@ DrawChord_Color PROC USES EAX EBX ECX EDX
 		SetColor:
 		CALL setTextColor
 
-		MOV AL, 48
+		MOV AL, 016h
 	Empty: 
 
 		ADD	DL, 5
@@ -311,5 +329,142 @@ DrawNext PROC USES EAX EBX
 
 
 DrawNext ENDP
+
+DrawInput PROC
+
+	MOV DH, GUITAR_SIZE
+	
+	MOV AL, 219
+
+	MOV DL, TAB_SIZE
+	MOV BH, TAB_SIZE
+
+	CALL WriteXY
+	PUSH EAX
+
+	MOV ECX, TOTAL_CHORDS
+	INC ECX
+
+
+	L2:
+
+		ADD BH, 5
+		MOV DL, BH
+		MOV AL, 016h
+
+		CALL WriteXY
+
+	LOOP L2
+
+	POP EAX
+
+	MOV DL, BH
+
+	CALL WriteXY
+	INC DH
+
+	RET
+
+DrawInput ENDP
+
+DrawInput_Chord PROC
+
+	MOV DH, GUITAR_SIZE
+	MOV DL, TAB_SIZE
+	MOV BH, TAB_SIZE
+
+	MOV ECX, TOTAL_CHORDS
+
+	L2:
+
+		MOV DL, TAB_SIZE
+
+		PUSH EAX
+
+		CMP AL, 61H
+		JE A
+
+		CMP AL, 73H
+		JE S
+
+		CMP AL, 64H
+		JE D
+
+		CMP AL, 66H
+		JE F
+
+		JMP G
+
+		A:
+			MOV AX, GREEN
+			ADD DL, 5
+		JMP Continue
+		S:
+			MOV AX, RED
+			ADD DL, 10
+		JMP Continue
+		D:
+			MOV AX, YELLOW
+			ADD DL, 15
+		JMP Continue
+		F:
+			MOV AX, BLUE
+			ADD DL, 20
+		JMP Continue
+		G:
+			MOV AX, LIGHTRED
+			ADD DL, 25
+		
+		Continue:
+
+		CALL setTextColor
+		MOV AL, 220
+
+		CALL WriteXY
+
+		POP EAX
+
+	LOOP L2
+
+	MOV AX, 0Fh
+	CALL setTextColor
+
+DrawInput_Chord ENDP
+
+GetInput PROC
+
+;MOV EBX, 0
+
+CALL ReadKey
+
+;Pressed A
+CMP AL, 61H
+JE ChordPressed
+
+;Pressed S
+CMP AL, 73H
+JE ChordPressed
+
+;Pressed D
+CMP AL, 64H
+JE ChordPressed
+
+;Pressed F
+CMP AL, 66H
+JE ChordPressed
+
+;Pressed G
+CMP AL, 67H
+JE ChordPressed
+
+RET
+
+ChordPressed:
+MOV InputChanged, 1
+CALL DrawInput_Chord
+
+ret
+
+GetInput ENDP
 
 END	AssemblyHero
