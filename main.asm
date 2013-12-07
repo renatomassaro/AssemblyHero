@@ -138,24 +138,23 @@ DrawChords_Down PROC USES EAX EBX EDX ESI
 	CMP AX, GUITAR_SIZE
 
 
-	;JG NoIntactLines
-
-		;If we are here then Drawn Lines < Guitar_Size. (We have intact lines)
-		;By intact lines I mean default lines from DrawBase
-		;That means different loop and ID information
-		; Loop = Drawn - 1
-		; Id = Dr - LINE
-
-		MOV ESI, 0
+	JG NoIntactLines
 		MOVZX ECX, Drawn		
 		DEC ECX
 		MOV EDX, ECX
 		CMP ECX, 0
 		JZ GTFO
-
+		MOV ESI, 0
+		JMP Go
 	NoIntactLines:
+		MOV ECX, GUITAR_SIZE
+		DEC ECX
+		MOV EDX, ECX
+		MOVZX ESI, Drawn
+		SUB ESI, GUITAR_SIZE
 
-	
+	Go:
+
 	MOV EAX, ECX
 	MOV EDX, 0
 	MOV DL, 0
