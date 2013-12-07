@@ -623,7 +623,7 @@ DrawInput_Chord PROC USES ESI
 
 	PUSH EAX
 	MOVZX EAX, Drawn
-
+	INC EAX
 	CMP AX, GUITAR_SIZE
 	POP EAX
 	JG NoIntactLines
